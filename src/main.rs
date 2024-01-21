@@ -2,6 +2,7 @@ extern crate gpx;
 extern crate cheap_ruler;
 #[macro_use] extern crate geo_types;
 
+use clap::Parser;
 
 use std::collections::HashSet;
 use std::collections::HashMap;
@@ -41,8 +42,30 @@ struct AList {
     pnt: Point
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+   /// AO Directory
+   #[arg(short, long)]
+   ao: String,
+
+   /// GPX file
+   #[arg(short, long)]
+   gpx: String,
+
+    /// Some extra debugging output
+    #[arg(short, long, action)]
+    verbose: bool,
+
+}
+
+
+
 fn main() {
-    let file = File::open("test.gpx").unwrap();
+
+    let args = Args::parse();
+
+    let file = File::open(args.gpx).unwrap();
     let reader = BufReader::new(file);
 
     // read takes any io::Read and gives a Result<Gpx, Error>.
@@ -50,7 +73,9 @@ fn main() {
 
     // Each GPX file has multiple "tracks", this takes the first one.
     let track: &Track = &gpx.tracks[0];
-    println!("Track name: {:?}",track.name);
+    if args.verbose {
+        println!("GPX track name: {:?}",track.name);
+    }
     
     let ruler = CheapRuler::new(40.5, DistanceUnit::Miles);
 
@@ -81,7 +106,9 @@ fn main() {
             point_list.push(p.point());
         }
 
-        println!("{:?}",point_list.len());
+        if args.verbose {
+        println!("Points in GPX Track: {:?}",point_list.len());
+        }
 
         // at this point we have a point list.
 
@@ -115,9 +142,11 @@ fn main() {
     max_lng += 0.5;
     min_lng -= 0.5;
 
-    println!("lat: ({},{}) lng: ({},{})",min_lat,max_lat,min_lng,max_lng);
+    if args.verbose {
+    println!("Bounding rectangle lat: ({},{}) lng: ({},{})",min_lat,max_lat,min_lng,max_lng);
+    }
 
-    let ao = fs::read_to_string("test.json").unwrap();
+    let ao = fs::read_to_string(args.ao).unwrap();
 
     let ao_list : Vec<AObject> = serde_json::from_str(&ao).unwrap();
    
@@ -133,7 +162,9 @@ fn main() {
         }
     }
 
-    println!("{:?}",ao_points.len());
+    if args.verbose {
+    println!("Total pois in db: {:?}",ao_points.len());
+    }
 
     let mut pois = HashSet::new();
 
@@ -146,6 +177,8 @@ fn main() {
             }
         }
     }
+
+    println!("\"Distance\",\"Title\",\"City\",\"URL\"");
 
     for poi in &pois {
         let mut min_dist = f64::INFINITY;
